@@ -1,0 +1,173 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+
+public class Tester {
+
+	public static void main(String[] args) {
+
+		String server = "jdbc:mysql://127.0.0.1:3306/" ;
+		String database = "product_track"; // change to your own database
+		String url = server + database + "?useSSL=false";
+		String username = "root"; // change to your own user name
+		String password = ""; // change to your own password		
+		
+		Scanner scanner = new Scanner((System.in));//new
+		Statement stat;
+		
+		try (Connection conn = DriverManager.getConnection(url, username, password)) {
+			System.out.println("DB Connectd");
+			
+			stat = conn.createStatement();
+			String query;
+			boolean sucess;
+			
+			
+			
+			//task1//
+			System.out.println("Query 1: Please input test product id");
+			try {
+				int p_id = scanner.nextInt();
+				ResultSet productidResult = stat
+						.executeQuery(String.format("SELECT P_ID FROM `product` WHERE P_ID='%d'", p_id));
+				ArrayList<Integer> matchingProductid = new ArrayList<Integer>();
+				while (productidResult.next()) {
+					int rightProductid = Integer.parseInt(productidResult.getString("P_ID"));
+					matchingProductid.add(rightProductid);
+				}
+				if (matchingProductid.contains(p_id) == false) {
+					throw new PasswordInputError("您輸入的產品代碼錯誤");
+				}else {
+					query = String.format("SELECT P_ID, Name, Materials, Category,  Date_of_made, Batch_number, Description FROM `product` WHERE P_ID='%d'", p_id);
+					sucess = stat.execute(query);
+					if (sucess) {
+						ResultSet result = stat.getResultSet();
+						showResultSet(result);
+						result.close();
+					}
+				}
+			} catch (Exception e) {
+				// TODO: handle exception
+				e.printStackTrace();
+			}
+
+			System.out.println("-".repeat(160));
+			
+			
+			//task2//
+			System.out.println("Query 2: Please input test result product id");
+			try {
+				int p_id = scanner.nextInt();
+				ResultSet productidResult = stat
+						.executeQuery(String.format("SELECT P_ID FROM `product` WHERE P_ID='%d'", p_id));
+				ArrayList<Integer> matchingProductid = new ArrayList<Integer>();
+				while (productidResult.next()) {
+					int rightProductid = Integer.parseInt(productidResult.getString("P_ID"));
+					matchingProductid.add(rightProductid);
+				}
+				if (matchingProductid.contains(p_id) == false) {
+					throw new PasswordInputError("您輸入的產品代碼錯誤");
+				}else {
+					query = String.format("SELECT P_ID, Name, Materials, Category,  Date_of_made, Batch_number, Description FROM `product` WHERE P_ID='%d'", p_id);
+					sucess = stat.execute(query);
+					if (sucess) {
+						ResultSet result = stat.getResultSet();
+						showResultSet(result);
+						result.close();
+					}
+					System.out.println("-".repeat(70)+"Test result"+"-".repeat(70));
+					query = String.format("SELECT Check_time, Name, Title, Test_result, Fail_reason FROM e_p LEFT JOIN employee ON e_p.E_ID = employee.E_ID WHERE e_p.P_ID='%d'", p_id);
+					sucess = stat.execute(query);
+					if (sucess) {
+						ResultSet result = stat.getResultSet();
+						showTestResult(result);
+						result.close();
+					}
+				}
+			} catch (Exception e) {
+				// TODO: handle exception
+				e.printStackTrace();
+			}
+			System.out.println("-".repeat(160));
+			
+			
+						
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}	
+	}
+	
+	
+	
+	// define this static method in your Tester class
+	public static void showResultSet(ResultSet result) throws SQLException {
+		
+		ResultSetMetaData metaData = result.getMetaData();
+		int columnCount = metaData.getColumnCount();
+		//System.out.print(columnCount);
+		for (int i = 1; i <= columnCount; i++) {
+			if(i==columnCount) {
+				System.out.printf("%45s", metaData.getColumnLabel(i));
+			}else {
+				System.out.printf("%15s", metaData.getColumnLabel(i));
+			}
+		}
+		System.out.println();
+		
+		while (result.next()) {
+			for (int i = 1; i <= columnCount; i++) {
+				if(i==columnCount) {
+					System.out.printf("%45s", result.getString(i));
+				}else {
+					System.out.printf("%15s", result.getString(i));
+				}
+			}
+			System.out.println();
+		}
+
+
+		System.out.println();
+	}
+	
+	// define this static method in your Tester class
+		public static void showTestResult(ResultSet result) throws SQLException {
+			
+			ResultSetMetaData metaData = result.getMetaData();
+			int columnCount = metaData.getColumnCount();
+			//System.out.print(columnCount);
+			for (int i = 1; i <= columnCount; i++) {
+				if(i==1) {
+					System.out.printf("%35s", metaData.getColumnLabel(i));
+				}else {
+					System.out.printf("%30s", metaData.getColumnLabel(i));
+				}
+			}
+			System.out.println();
+			
+			while (result.next()) {
+				for (int i = 1; i <= columnCount; i++) {
+					if(i==1) {
+						System.out.printf("%35s", result.getString(i));
+					}else {
+						System.out.printf("%30s", result.getString(i));
+					}
+				}
+				System.out.println();
+			}
+
+
+			System.out.println();
+		}
+}
+class PasswordInputError extends Exception {
+	public PasswordInputError(String Error) {
+		super(Error);
+	}
+}
