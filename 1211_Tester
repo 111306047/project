@@ -1,0 +1,41 @@
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+
+public class Tester {
+
+	public static void main(String[] args) throws Product.PasswordInputError {
+
+		Scanner scanner = new Scanner((System.in));//new
+		Statement stat;
+		
+		System.out.println("請輸入員工ID：");
+        int employeeID = scanner.nextInt();
+        System.out.println("請輸入密碼：");
+        String password1 = scanner.next();
+
+        Employee employee = new Employee(employeeID, password1);
+        employee.connectToDatabase();
+        
+        if (employee.authenticate()) {
+            System.out.println("登入成功！");
+            // 紀錄員工登入時間
+            employee.recordAccessTime();
+
+            System.out.println("請輸入想要驗貨(1)或查詢產品的資訊(2)：");
+            int action = scanner.nextInt();
+            employee.performAction(action);
+            
+        } else {
+            System.out.println("登入失敗，請檢查員工ID和密碼是否正確。");
+        }
+    
+	}
+}
