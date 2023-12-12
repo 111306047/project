@@ -1,0 +1,2 @@
+5000,pants,denim,clothes,2023-11-30,4,A. Gap B. Blue C. Rectangle Label
+6000,necklace,metal,accessory,2023-11-10,5,A. GU B. Gold C. Circle Label
