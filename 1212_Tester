@@ -22,6 +22,8 @@ public class Tester {
         String password1 = scanner.next();
 
         Employee employee = new Employee(employeeID, password1);
+        Employee employee1 = new Employee();
+        Product.employee = employee1;
         employee.connectToDatabase();
         
         if (employee.authenticate()) {
@@ -29,10 +31,9 @@ public class Tester {
             // 紀錄員工登入時間
             employee.recordAccessTime();
 
-            System.out.println("請輸入想要驗貨(1)或查詢產品的資訊(2)或上傳產品檔案(3)：");
+            System.out.println("請輸入想要驗貨(1)或查詢產品的資訊(2)或上傳產品檔案(3)或離開（4)：");
             int action = scanner.nextInt();
-            employee.performAction(action);
-            
+            employee.performAction(action);       
         } else {
             System.out.println("登入失敗，請檢查員工ID和密碼是否正確。");
         }
