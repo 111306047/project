@@ -14,7 +14,7 @@ public class Employee {
     private String title;
     private Connection conn;
     String server = "jdbc:mysql://127.0.0.1:3306/" ;
-	String database = "product_track"; // change to your own database
+	String database = "product_check"; // change to your own database
 	String url = server + database + "?useSSL=false";
 	String username = "root"; // change to your own user name
 	String password1 = ""; // change to your own password
@@ -26,7 +26,11 @@ public class Employee {
         scanner = new Scanner((System.in));
     }
     
-    public void connectToDatabase() {
+    public Employee() {
+		
+	}
+
+	public void connectToDatabase() {
         try {
             conn = DriverManager.getConnection(url, username, password1);
         } catch (SQLException e) {
@@ -123,6 +127,10 @@ public class Employee {
             	}else {
             		System.out.println("你沒有權限上傳產品資料");
             	}
+            	break;
+            case 4:
+            	System.out.println("成功登出");
+            	System.exit(0);
             	break;
             default:
                 System.out.println("輸入無效");
