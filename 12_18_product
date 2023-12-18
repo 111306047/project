@@ -1,0 +1,246 @@
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+class Product {
+	static Scanner scanner = new Scanner((System.in));//new
+	static Employee employee ;
+    
+    static class PasswordInputError extends Exception {
+        public PasswordInputError(String Error) {
+            super(Error);
+        }
+    }
+    
+    
+    //case1:上傳產品資料
+    public static void uploadproductinfo(Connection conn,String filePath) throws IOException, Product.PasswordInputError {
+    	if (conn != null) {
+    		try {
+		    	Path file = Paths.get(filePath);
+		    	Scanner reader = new Scanner(file);
+		    	while (reader.hasNextLine()) {
+		    	String[] information = reader.nextLine().split(",");
+                String query = "INSERT INTO product (P_ID, Name, Materials, Category, Date_of_made, Batch_number, Description) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                PreparedStatement pstmt = conn.prepareStatement(query);
+                pstmt.setInt(1, Integer.parseInt(information[0]));
+                pstmt.setString(2, information[1]);
+                pstmt.setString(3, information[2]);
+                pstmt.setString(4, information[3]);
+                pstmt.setDate(5, java.sql.Date.valueOf(information[4]));
+                pstmt.setInt(6, Integer.parseInt(information[5]));
+                pstmt.setString(7, information[6]);
+                pstmt.executeUpdate();
+		    	}  
+		    	reader.close();
+                System.out.println("資料成功上傳");
+                
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+	    		
+	    }
+    }    
+    
+    //case2:列印產品資訊列印產品資訊
+    public static void displayProductInfo(Connection conn, int productID)throws PasswordInputError {
+        try {
+        	String query;
+        	boolean sucess;
+            Statement stat = conn.createStatement();
+            ResultSet productInfoResult = stat.executeQuery(String.format("SELECT * FROM `product` WHERE P_ID='%d'", productID));
+            ArrayList<Integer> matchingProductid = new ArrayList<Integer>();
+			while (productInfoResult.next()) {
+				int rightProductid = Integer.parseInt(productInfoResult.getString("P_ID"));
+				matchingProductid.add(rightProductid);
+			}
+			if (matchingProductid.contains(productID) == false) {
+				throw new PasswordInputError("您輸入的產品代碼錯誤");
+			}else {
+				query = String.format("SELECT P_ID, Name, Materials, Category,  Date_of_made, Batch_number, Description FROM `product` WHERE P_ID='%d'", productID);
+				sucess = stat.execute(query);
+				if (sucess) {
+					ResultSet result = stat.getResultSet();
+					showResultSet(result);
+					result.close();
+				}
+				System.out.println("-".repeat(70)+"Test result"+"-".repeat(70));
+				query = String.format("SELECT Check_time, Name, Title, Test_result, Fail_reason FROM e_p LEFT JOIN employee ON e_p.E_ID = employee.E_ID WHERE e_p.P_ID='%d'", productID);
+				sucess = stat.execute(query);
+				if (sucess) {
+					ResultSet result = stat.getResultSet();
+					showTestResult(result);
+					result.close();
+				}
+			}
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    //case3:更新產品驗貨資訊
+    public static void updateTestResult(Connection conn, int employeeID, int productID, String testResult, String failReason) throws Product.PasswordInputError {
+        try {
+        	// 檢查產品的 hash_number 是否為 null，若不為 null，表示已有 hash，則不允許驗貨
+            String checkHashQuery = "SELECT Hash_number FROM product WHERE P_ID = ?";
+            PreparedStatement checkHashStmt = conn.prepareStatement(checkHashQuery);
+            checkHashStmt.setInt(1, productID);
+            ResultSet hashResult = checkHashStmt.executeQuery();
+            if (hashResult.next()) {
+                String hash = hashResult.getString("hash_number");
+                if (hash != null) {
+                    System.out.println("產品已被加密，無法再進行驗貨。");
+                    return;
+                }
+            }
+            String query = "INSERT INTO e_p (E_ID, P_ID, Test_result, Fail_reason) VALUES (?, ?, ?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(query);
+            pstmt.setInt(1, employeeID);
+            pstmt.setInt(2, productID);
+            pstmt.setString(3, testResult);
+            pstmt.setString(4, failReason);
+            pstmt.executeUpdate();
+            System.out.println("資料成功上傳");
+            String query1 = "SELECT Check_time, Name, Title, Test_result, Fail_reason FROM e_p LEFT JOIN employee ON e_p.E_ID = employee.E_ID WHERE e_p.P_ID=?";
+            PreparedStatement pstmt1 = conn.prepareStatement(query1);
+            pstmt1.setInt(1, productID);
+            ResultSet result = pstmt1.executeQuery();
+            showTestResult(result);
+            result.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }    
+    
+    //列印產品資訊方法
+    public static void showResultSet(ResultSet result) throws SQLException {
+    	ResultSetMetaData metaData = result.getMetaData();
+		int columnCount = metaData.getColumnCount();
+		String mixString = "";
+		while (result.next()) {
+			for (int i = 1; i <= columnCount; i++) {
+				System.out.printf(metaData.getColumnLabel(i)+" "+ result.getString(i)+"\n");
+				mixString+=(result.getString(i));
+			}
+		}
+    }
+    
+    //列印產品檢驗過程方法
+    public static void showTestResult(ResultSet result) throws SQLException {
+		ResultSetMetaData metaData = result.getMetaData();
+		int columnCount = metaData.getColumnCount();
+		//System.out.print(columnCount);
+		for (int i = 1; i <= columnCount; i++) {
+			if(i==1) {
+				System.out.printf("%35s", metaData.getColumnLabel(i));
+			}else {
+				System.out.printf("%30s", metaData.getColumnLabel(i));
+			}
+		}
+		System.out.println();
+		while (result.next()) {
+			for (int i = 1; i <= columnCount; i++) {
+				if(i==1) {
+					System.out.printf("%35s", result.getString(i));
+				}else {
+					System.out.printf("%30s", result.getString(i));
+				}
+			}
+			System.out.println();
+		}
+	}
+    
+    //case4:產品加密和更新
+    public static void setHash(Connection conn, int productID)throws PasswordInputError {
+        try {
+        	// 檢查產品的 hash_number 是否為 null，若不為 null，表示已有 hash，則不允許再次加密
+            String checkHashQuery = "SELECT hash_number FROM product WHERE P_ID = ?";
+            PreparedStatement checkHashStmt = conn.prepareStatement(checkHashQuery);
+            checkHashStmt.setInt(1, productID);
+            ResultSet hashResult = checkHashStmt.executeQuery();
+            if (hashResult.next()) {
+                String hash = hashResult.getString("hash_number");
+                if (hash != null) {
+                    System.out.println("產品已被加密過，無法再進行加密。");
+                    return;
+                }
+            }
+        	
+        	String query;
+        	boolean sucess;
+            Statement stat = conn.createStatement();
+            ResultSet productInfoResult = stat.executeQuery(String.format("SELECT * FROM `product` WHERE P_ID='%d'", productID));
+            ArrayList<Integer> matchingProductid = new ArrayList<Integer>();
+			while (productInfoResult.next()) {
+				int rightProductid = Integer.parseInt(productInfoResult.getString("P_ID"));
+				matchingProductid.add(rightProductid);
+			}
+			if (matchingProductid.contains(productID) == false) {
+				throw new PasswordInputError("您輸入的產品代碼錯誤");
+			}else {
+				query = String.format("SELECT P_ID, CAST(REPLACE(Date_of_made,'-','') AS SIGNED) AS Date_of_made FROM `product` WHERE P_ID='%d'", productID);
+				sucess = stat.execute(query);
+				if (sucess) {
+					ResultSet result = stat.getResultSet();
+					String hash = showProductResultSet(result);
+					String encode_hash = generateHash(hash);
+					query = String.format("UPDATE product SET Hash_number='%s' WHERE P_ID ='%d'", encode_hash, productID);
+					sucess = stat.execute(query);
+					result.close();
+				}
+			}
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //列印產品加密過程方法
+    public static String showProductResultSet(ResultSet result) throws SQLException {
+		ResultSetMetaData metaData = result.getMetaData();
+		int columnCount = metaData.getColumnCount();
+		String mixString = "";
+		while (result.next()) {
+			for (int i = 1; i <= columnCount; i++) {
+				System.out.printf(metaData.getColumnLabel(i)+" "+ result.getString(i)+"\n");
+				mixString+=(result.getString(i));
+			}
+		System.out.println("P_ID+Batch_Number: "+mixString);
+		}
+		return mixString;
+    }
+    
+    //加密方法
+	public static String generateHash(String inputString) {
+	    //String inputString = Integer.toString(inputInteger);
+	    MessageDigest digest = null;
+	    try {
+	        digest = MessageDigest.getInstance("SHA-256");
+	    } catch (NoSuchAlgorithmException e) {
+	        e.printStackTrace();
+	    }
+	    byte[] hashBytes = digest.digest(inputString.getBytes(StandardCharsets.UTF_8));
+	    StringBuilder hexString = new StringBuilder();
+	    for (byte hashByte : hashBytes) {
+	        String hex = Integer.toHexString(0xff & hashByte);
+	        if (hex.length() == 1) {
+	            hexString.append('0');
+	        }
+	        hexString.append(hex);
+	    }
+	    System.out.println("Hash Number: " + hexString.toString());
+	    System.out.println("QR Code url: https://vmtkax61gby6k86z8qxbjg.on.drv.tw/dist11/"+ hexString.toString());
+	    return hexString.toString();
+	}
+}
