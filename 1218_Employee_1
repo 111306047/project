@@ -1,0 +1,129 @@
+import java.sql.*;
+import java.util.Scanner;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+public class Employee {
+    private int employeeID;
+    private String password;
+    private String name;
+    private String title;
+    private Connection conn;
+    String server = "jdbc:mysql://127.0.0.1:3306/" ;
+	String database = "product_track"; // change to your own database
+	String url = server + database + "?useSSL=false";
+	String username = "root"; // change to your own user name
+	String password1 = ""; // change to your own password
+	Scanner scanner ;
+
+    public Employee(int employeeID, String password) {
+        this.employeeID = employeeID;
+        this.password = password;
+        scanner = new Scanner((System.in));
+    }
+    
+    public Employee() {
+		
+	}
+
+	public void connectToDatabase() {
+        try {
+            conn = DriverManager.getConnection(url, username, password1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+	
+	//員工認證
+    public boolean authenticate() {
+        if (conn != null) {
+            try {
+                String query = "SELECT * FROM Employee WHERE E_ID = ? AND Password = ?";
+                PreparedStatement pstmt = conn.prepareStatement(query);
+                pstmt.setInt(1, employeeID);
+                pstmt.setString(2, password);
+                ResultSet rs = pstmt.executeQuery();
+                return rs.next(); // 如果有符合的資料就回傳 true，否則回傳 false
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+    
+    //員工登入時間更新
+    public void recordAccessTime() {
+        if (conn != null) {
+            try {
+                String updateQuery = "UPDATE Employee SET access_time = CURRENT_TIMESTAMP WHERE E_ID = ?";
+                PreparedStatement pstmt = conn.prepareStatement(updateQuery);
+                pstmt.setInt(1, employeeID);
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    //辨別員工欲實行工作
+    public void performAction(int action) throws Product.PasswordInputError {
+        switch (action) {
+	        case 1://檢查產品ID的重複性
+	        	String t= Integer.toString(this.employeeID);
+	        	if(t.substring(0,1).equals("1")) {
+		        	System.out.println("請輸入檔案路徑(.txt或.csv)");
+		        	System.out.println("產品資訊請以','分隔，欄位內容為:P_ID, Name, Materials, Category, Date_of_made, Batch_number, Description");
+		        	try {
+		        		String filepath = scanner.next();
+		        		 Product.uploadproductinfo(conn, filepath);
+		            } catch (IOException e) {
+		                e.printStackTrace();
+		            }
+	        	}else {
+	        		System.out.println("你沒有權限上傳產品資料");
+	        	}
+	        	break;	        	
+	        case 2:
+	            System.out.println("請輸入查詢貨品編號");
+	            int searchProductID = scanner.nextInt();
+	            Product.displayProductInfo(conn, searchProductID);
+	            break;	            
+            case 3:
+                System.out.println("請輸入驗貨的貨品編號");
+                int productID = scanner.nextInt();
+                Product.displayProductInfo(conn, productID);
+                System.out.println("請輸入驗貨結果（Y 或 N）：");
+                String testResult = scanner.next();
+                while(!(testResult.equals("Y")) && !(testResult.equals("N"))) {
+                	System.out.println("請輸入驗貨結果（Y 或 N）：");
+                	testResult = scanner.next();
+                }
+                System.out.println("請輸入備註（輸入Y則不需填寫）：");
+                scanner.nextLine(); // 清除緩衝區
+                String comment = scanner.nextLine();                
+                Product.updateTestResult(conn, this.employeeID, productID, testResult, comment);
+                break;
+            case 4:
+                System.out.println("請輸入hash貨品編號");
+                int hashProductID = scanner.nextInt();
+                Product.setHash(conn, hashProductID);
+                break;
+            case 5:
+            	System.out.println("成功登出");
+            	System.exit(0);
+            	break;
+            default:
+                System.out.println("輸入無效");
+                break;
+        }
+    }
+
+    
+}
+    
+    
+    
